@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة الأرقام وألغاز الأبواب الذكية</title>
+    <style>
+        :root {
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --border-color: rgba(255, 255, 255, 0.25);
+            --text-color: #ffffff;
+            --correct-color: #10b981;
+            --wrong-color: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            /* استخدام الخلفية الخشبية وأجواء المكتب المطابقة للصورة */
+            background-color: #121212;
+            background-image: url('image_7.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 20px;
+        }
+
+        /* طبقة تغشية داكنة خفيفة جداً لضمان قراءة المحتوى بوضوح فوق الخلفية الخشبية */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 0;
+        }
+
+        .main-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1100px;
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fcd34d 0%, #ffffff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(252, 211, 77, 0.3);
+        }
+
+        .instructions {
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            font-weight: 600;
+        }
+
+        .game-panel {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.8rem;
+        }
+
+        .game-panel.active {
+            display: flex;
+        }
+
+        /* لعبة الأرقام */
+        .circles-grid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.8rem;
+            perspective: 1000px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            width: 110px;
+            height: 110px;
+            cursor: pointer;
+            perspective: 1000px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+            border-radius: 50%;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .card-front {
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .card:hover .card-front {
+            transform: scale(1.08);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .card-back {
+            background: rgba(15, 23, 42, 0.95);
+            transform: rotateY(180deg);
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* صندوق اللغز */
+        .puzzle-box {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 1.8rem;
+            width: 100%;
+            text-align: right;
+            font-size: 1.25rem;
+            line-height: 1.8;
+            color: #f1f5f9;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* الأبواب الثلاثة بجانب بعضها بشكل أفقي */
+        .doors-flex-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        .single-door-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 1.2rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .single-door-container:hover {
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        /* نص الخيار فوق الباب */
+        .door-info-label {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            width: 100%;
+            min-height: 85px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            line-height: 1.5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* حاوية الباب ومن خلفه النتيجة */
+        .door-scene {
+            width: 100%;
+            height: 220px;
+            position: relative;
+            perspective: 1000px;
+        }
+
+        /* النتيجة المختبئة خلف الباب المعين */
+        .door-result-behind {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            line-height: 1.6;
+            color: #ffffff;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+            z-index: 1;
+        }
+
+        .door-scene.correct-bg .door-result-behind {
+            background: linear-gradient(145deg, #064e3b, #042f2e);
+            border-color: var(--correct-color);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.5);
+        }
+
+        .door-scene.wrong-bg .door-result-behind {
+            background: linear-gradient(145deg, #7f1d1d, #450a0a);
+            border-color: var(--wrong-color);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+        }
+
+        /* جسم الباب الحقيقي الذي ينفتح عند الضغط عليه فردياً */
+        .real-door-leaf {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 4px solid #475569;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+            transform-origin: right;
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        /* مقبض الباب */
+        .real-door-leaf::after {
+            content: '';
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #fcd34d 0%, #d97706 100%);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .door-scene:hover .real-door-leaf {
+            border-color: #94a3b8;
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        /* حركة فتح الباب للباب المضغوط فقط */
+        .door-scene.open .real-door-leaf {
+            transform: rotateY(-110deg);
+            pointer-events: none;
+        }
+
+        .door-icon-symbol {
+            font-size: 2.5rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+
+        .status-container {
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .status-message {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #34d399;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .status-message.visible {
+            opacity: 1;
+        }
+
+        /* الأزرار العامة */
+        .btn-group {
+            display: flex;
+            gap: 1.2rem;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #fff;
+            border: none;
+            padding: 0.85rem 2.4rem;
+            border-radius: 9999px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.85rem 2.4rem;
+            border-radius: 9999px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover, .btn-secondary:hover {
+            transform: translateY(-2px);
+            opacity: 0.95;
+        }
+
+        .color-1 { background: radial-gradient(circle at 30% 30%, #f43f5e, #be123c); }
+        .color-2 { background: radial-gradient(circle at 30% 30%, #06b6d4, #0e7490); }
+        .color-3 { background: radial-gradient(circle at 30% 30%, #10b981, #047857); }
+        .color-4 { background: radial-gradient(circle at 30% 30%, #f59e0b, #b45309); }
+        .color-5 { background: radial-gradient(circle at 30% 30%, #8b5cf6, #6d28d9); }
+
+        /* التجاوب مع الجوالات */
+        @media (max-width: 768px) {
+            .doors-flex-row {
+                flex-direction: column;
+            }
+            .main-wrapper {
+                padding: 1.8rem 1rem;
+            }
+            h1 {
+                font-size: 1.9rem;
+            }
+            .card {
+                width: 75px;
+                height: 75px;
+            }
+            .card-back {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <!-- قسم لعبة الذاكرة والأرقام -->
+        <div id="memorySection" class="game-panel active">
+            <header>
+                <h1>لعبة الذاكرة والأرقام</h1>
+                <p class="instructions">اكتشف الأرقام بالترتيب التصاعدي (من 1 إلى 5)</p>
+            </header>
+
+            <div class="circles-grid" id="grid"></div>
+
+            <div class="status-container">
+                <div class="status-message" id="memoryStatus"></div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-primary" id="resetBtn">جولة جديدة</button>
+                <button class="btn-secondary" onclick="switchSection('puzzles')">الألغاز الذكية</button>
+            </div>
+        </div>
+
+        <!-- قسم الألغاز الذكية والأبواب -->
+        <div id="puzzlesSection" class="game-panel">
+            <header>
+                <h1>ألغاز وأرقام</h1>
+                <p class="instructions" id="puzzleCounter">اللغز 1 من 15</p>
+            </header>
+
+            <div class="puzzle-box" id="puzzleText">جاري تحميل اللغز...</div>
+
+            <!-- الأبواب الثلاثة بجانب بعضها بشكل أفقي -->
+            <div class="doors-flex-row" id="doorsFlexRow"></div>
+
+            <div class="status-container">
+                <div class="status-message" id="puzzleStatus"></div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="switchSection('memory')">الأرقام</button>
+                <button class="btn-primary" id="nextPuzzleBtn" style="display: none;" onclick="nextPuzzle()">اللغز التالي</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- لعبة الأرقام ---
+        const colors = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5'];
+        let targetOrder = [1, 2, 3, 4, 5];
+        let currentStep = 0;
+        let isLock = false;
+
+        const grid = document.getElementById('grid');
+        const memoryStatus = document.getElementById('memoryStatus');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function initGame() {
+            grid.innerHTML = '';
+            currentStep = 0;
+            isLock = false;
+            memoryStatus.className = 'status-message';
+
+            const numbers = shuffle([1, 2, 3, 4, 5]);
+            const colorShuffled = shuffle([...colors]);
+
+            numbers.forEach((num, idx) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.number = num;
+
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front ${colorShuffled[idx]}"></div>
+                        <div class="card-back">${num}</div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => handleCardClick(card, num));
+                grid.appendChild(card);
+            });
+        }
+
+        function handleCardClick(card, number) {
+            if (isLock || card.classList.contains('flipped')) return;
+            card.classList.add('flipped');
+
+            const expectedNumber = targetOrder[currentStep];
+
+            if (number === expectedNumber) {
+                currentStep++;
+                if (currentStep === targetOrder.length) {
+                    memoryStatus.textContent = 'تهانينا! اكتشفت الترتيب الصحيح بنجاح 🎉';
+                    memoryStatus.className = 'status-message visible success';
+                    isLock = true;
+                }
+            } else {
+                isLock = true;
+                grid.classList.add('shake');
+                setTimeout(() => grid.classList.remove('shake'), 400);
+                setTimeout(() => {
+                    document.querySelectorAll('.card').forEach(c => c.classList.remove('flipped'));
+                    currentStep = 0;
+                    isLock = false;
+                }, 900);
+            }
+        }
+
+        resetBtn.addEventListener('click', initGame);
+
+        // --- الألغاز الذكية الـ 15 ---
+        const puzzles = [
+            {
+                q: "واحد صحى بنص الليل على إنذار حريق، وكان ساكن بالدور السادس. قبل تنقطع الكهرباء سمع الموظف يقول إن الحريق بدأ بالدور الرابع والدخان قاعد يطلع لفوق. اختر الخيار الآمن:",
+                options: [
+                    "وراه درج ينزل للأدوار السفلية.",
+                    "وراه درج يطلع للسطح.",
+                    "وراه المصعد الكهربائي."
+                ],
+                correct: 0,
+                explanation: "النزول بيقربه من الخارج ويبعده عن الأدوار العليا، والمصعد مو آمن وقت الحريق."
+            },
+            {
+                q: "شخص ضاع داخل كهف. يوم دخل كان الجو برا بارد، وداخل الكهف كان أدفى. بعد ساعات وصل لثلاث ممرات خلف الأبواب:",
+                options: [
+                    "يجي منه هوا أبرد بشكل واضح.",
+                    "أدفى من المكان اللي واقف فيه.",
+                    "ما فيه أي حركة هوا نهائياً."
+                ],
+                correct: 0,
+                explanation: "الهوا البارد غالباً جاي من فتحة تؤدي للخارج."
+            },
+            {
+                q: "شخص انحشر بقصر قديم، وكان يدري إن الباب الخارجي الوحيد يفتح على حديقة فيها نافورة شغالة. وراء الأبواب الثلاثة:",
+                options: [
+                    "صوت ساعة كبيرة ودقاتها.",
+                    "صوت مويه خفيف وجريان.",
+                    "صوت خطوات أقدام قريبة."
+                ],
+                correct: 1,
+                explanation: "صوت المويه يدل على وجود الحديقة والنافورة."
+            },
+            {
+                q: "انقفلت الأبواب على شخص داخل مستودع، وكان يعرف إن باب الخروج يفتح مباشرة على الشارع. برا الجو كان فيه هوا قوي ومطر:",
+                options: [
+                    "من تحته يدخل هوا بارد وقطرات مويه.",
+                    "من تحته يطلع نور، بس ما فيه هوا.",
+                    "ما يطلع منه لا نور ولا هوا."
+                ],
+                correct: 0,
+                explanation: "الجو الممطر والهوا القوي برا يظهر تأثيرهما المباشر من أسفل باب الشارع."
+            },
+            {
+                q: "شخص موجود بأسفل سفينة تعطلت، والمويه بدأت تدخل من الجهة اليسار. وصل لممر فيه 3 أبواب:",
+                options: [
+                    "الأرض عنده مبللة والمويه جاية من تحته.",
+                    "الأرض ناشفة ووراه درج يطلع لفوق.",
+                    "الأرض ناشفة، بس الممر يكمل لنفس المستوى."
+                ],
+                correct: 1,
+                explanation: "المطلوب مو بس الابتعاد عن التسريب، بل الصعود لمستوى أعلى للأمان."
+            },
+            {
+                q: "شخص دخل بيت مهجور وقت العصر، وبعد شوي ضاع داخله. يعرف إن واجهة البيت كانت باتجاه الغرب:",
+                options: [
+                    "يدخل من تحته ضوء شمس قوي.",
+                    "وراه ظلام كامل ولا يوجد نور.",
+                    "فيه نور لمبة كهربائية خفيف."
+                ],
+                correct: 0,
+                explanation: "وقت العصر الشمس تكون جهة الغرب، مما يرجعه لواجهة البيت والخارج."
+            },
+            {
+                q: "شخص انقفل عليه المتحف بعد نهاية الدوام. قبل يقفلون، شاف الموظفين يطلعون من باب قريب من مكان يسمع فيه صوت أجهزة المراقبة:",
+                options: [
+                    "وراه صوت ثلاجات ومكاين تبريد.",
+                    "وراه أصوات أجهزة وصفير إلكتروني.",
+                    "وراه هدوء تام ولا يوجد صوت."
+                ],
+                correct: 1,
+                explanation: "أصوات الأجهزة والصفير الإلكتروني تدل على غرفة المراقبة والخروج."
+            },
+            {
+                q: "شخص دخل نفق قديم من جهة قريبة من البحر، ويعرف إن نهايته الثانية داخل المدينة. ضاع بالنص ووصل لثلاث أبواب:",
+                options: [
+                    "وراه صوت أمواج البحر العالية.",
+                    "وراه أصوات سيارات بعيدة وزحمة.",
+                    "وراه صوت مويه تقطر بصوت خفيف."
+                ],
+                correct: 1,
+                explanation: "الأمواج بترجعه لنقطة البداية، بينما السيارات تدل على جهة المدينة."
+            },
+            {
+                q: "في قلعة قديمة، مكتوب بالخريطة إن المخرج السري يمر تحت سور القلعة قبل ما يطلع برا:",
+                options: [
+                    "وراه درج يطلع لفوق للأعلى.",
+                    "وراه ممر بنفس مستوى القلعة الحالي.",
+                    "وراه درج ينزل تحت الأرض."
+                ],
+                correct: 2,
+                explanation: "المرور تحت السور يتطلب النزول تحت الأرض أولاً."
+            },
+            {
+                q: "شخص انحشر بمبنى بعد ما انقطعت الكهرباء. يعرف إن مخرج الطوارئ يفتح للخارج مباشرة، وبرا ما زالت الشمس طالعة:",
+                options: [
+                    "فيه نور خفيف داخل من أطراف الباب.",
+                    "فوقه لمبة طوارئ شغالة وأطرافه مظلمة.",
+                    "مظلم بالكامل ولا يظهر أي نور."
+                ],
+                correct: 0,
+                explanation: "النور جاي من الشمس برا وليس من كهرباء المبنى."
+            },
+            {
+                q: "شخص ضاع داخل مزرعة كبيرة وقت الليل. قبل يدخل كان موقف سيارته جنب الطريق العام، والطريق فيه سيارات تمر:",
+                options: [
+                    "وراه صوت حشرات ليلية ومويه.",
+                    "وراه أصوات سيارات متقطعة وقريبة.",
+                    "وراه صوت حيوانات وأغنام."
+                ],
+                correct: 1,
+                explanation: "أصوات السيارات المتقطعة تدل على قرب الطريق العام."
+            },
+            {
+                q: "شخص انقفل داخل جزء بارد من مصنع. يعرف إن غرفة الإنتاج أدفى بكثير من منطقة التخزين:",
+                options: [
+                    "مقبضه بارد جدًا وعليه طبقة ثلج.",
+                    "يطلع من أطرافه هوا أبرد بكثير.",
+                    "مقبضه أدفى من الباقي بشكل ملحوظ."
+                ],
+                correct: 2,
+                explanation: "المقبض الأدفى يدل على الانتقال للجهة الأدفى."
+            },
+            {
+                q: "شخص انقفل داخل مكتبة ضخمة. يعرف إن باب الخروج الرئيسي يفتح على شارع مزدحم، لكن فيه غرفة قراءة قريبة منه:",
+                options: [
+                    "وراه هدوء تام وعزل كامل للصوت.",
+                    "وراه صوت سيارات خفيف ومتقطع.",
+                    "وراه صوت ساعة حائط كبيرة."
+                ],
+                correct: 1,
+                explanation: "صوت الشارع هو الدليل الأقوى على الخارج."
+            },
+            {
+                q: "شخص ضاع داخل مصنع، وقبل يدخل لاحظ إن الريح برا كانت قوية من جهة الشمال. يعرف إن مخرج الطوارئ بالجدار الشمالي:",
+                options: [
+                    "الهوا يدفع الباب للداخل بقوة واضحة.",
+                    "ما فيه أي حركة هوا حول الباب.",
+                    "الهوا يطلع من تحته باتجاه برا."
+                ],
+                correct: 0,
+                explanation: "إذا الريح جاية من الشمال والباب على الجدار الشمالي، ستدفع الهوا للداخل."
+            },
+            {
+                q: "شخص محبوس داخل بيت، ويعرف إن واحد من الأبواب يطلع للحوش، والثاني لغرفة، والثالث لقبو. الجو برا بارد جدًا والمدفأة شغالة:",
+                options: [
+                    "الهوا حول الباب دافي ومريح.",
+                    "فيه هوا بارد يدخل من الفراغ تحته.",
+                    "فيه درج واضح ينزل بعد الباب."
+                ],
+                correct: 1,
+                explanation: "الهوا البارد قادم مباشرة من الحوش الخارجي."
+            }
+        ];
+
+        let currentPuzzleIndex = 0;
+
+        function loadPuzzle() {
+            const p = puzzles[currentPuzzleIndex];
+            document.getElementById('puzzleCounter').textContent = `اللغز ${currentPuzzleIndex + 1} من ${puzzles.length}`;
+            document.getElementById('puzzleText').textContent = p.q;
+            
+            const doorsFlexRow = document.getElementById('doorsFlexRow');
+            doorsFlexRow.innerHTML = '';
+            
+            const puzzleStatus = document.getElementById('puzzleStatus');
+            puzzleStatus.className = 'status-message';
+            puzzleStatus.textContent = '';
+            document.getElementById('nextPuzzleBtn').style.display = 'none';
+
+            p.options.forEach((opt, idx) => {
+                const columnContainer = document.createElement('div');
+                columnContainer.className = 'single-door-container';
+
+                // نص الخيار فوق الباب
+                const infoLabel = document.createElement('div');
+                infoLabel.className = 'door-info-label';
+                infoLabel.textContent = opt;
+
+                // مشهد الباب
+                const doorScene = document.createElement('div');
+                doorScene.className = 'door-scene';
+
+                // النتيجة المخفية خلف هذا الباب بالذات
+                const doorResultBehind = document.createElement('div');
+                doorResultBehind.className = 'door-result-behind';
+
+                // الباب الحقيقي من الأمام
+                const realDoorLeaf = document.createElement('div');
+                realDoorLeaf.className = 'real-door-leaf';
+                realDoorLeaf.innerHTML = `<div class="door-icon-symbol">🚪</div>`;
+
+                // عند الضغط، يتم فحص هذا الباب وحده فقط فتحه دون باقي الأبواب
+                realDoorLeaf.addEventListener('click', () => checkSingleDoor(idx, doorScene, doorResultBehind, p));
+
+                doorScene.appendChild(doorResultBehind);
+                doorScene.appendChild(realDoorLeaf);
+
+                columnContainer.appendChild(infoLabel);
+                columnContainer.appendChild(doorScene);
+                doorsFlexRow.appendChild(columnContainer);
+            });
+        }
+
+        function checkSingleDoor(selectedIndex, doorScene, doorResultBehind, p) {
+            const puzzleStatus = document.getElementById('puzzleStatus');
+
+            // تعبئة النتيجة خلف هذا الباب المختار فقط
+            if (selectedIndex === p.correct) {
+                doorScene.classList.add('correct-bg');
+                doorResultBehind.innerHTML = `🌟 <strong>إجابة صحيحة!</strong><br><br>${p.explanation}`;
+                puzzleStatus.textContent = 'أحسنت! إجابة موفقة 🌟';
+                puzzleStatus.className = 'status-message visible';
+            } else {
+                doorScene.classList.add('wrong-bg');
+                doorResultBehind.innerHTML = `❌ <strong>إجابة خاطئة</strong><br><br>${p.explanation}`;
+                puzzleStatus.textContent = 'حاول مرة أخرى أو انتقل للغز التالي 💪';
+                puzzleStatus.className = 'status-message visible';
+            }
+
+            // فتح الباب المضغوط وحده فقط
+            doorScene.classList.add('open');
+
+            // إظهار زر اللغز التالي
+            if (currentPuzzleIndex < puzzles.length - 1) {
+                document.getElementById('nextPuzzleBtn').style.display = 'block';
+            } else {
+                setTimeout(() => {
+                    puzzleStatus.textContent = 'أنهيت جميع الألغاز بنجاح وتألق! 🏆';
+                }, 1000);
+            }
+        }
+
+        function nextPuzzle() {
+            currentPuzzleIndex++;
+            loadPuzzle();
+        }
+
+        function switchSection(sectionName) {
+            document.querySelectorAll('.game-panel').forEach(s => s.classList.remove('active'));
+            if (sectionName === 'memory') {
+                document.getElementById('memorySection').classList.add('active');
+                initGame();
+            } else if (sectionName === 'puzzles') {
+                document.getElementById('puzzlesSection').classList.add('active');
+                loadPuzzle();
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
